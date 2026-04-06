@@ -1,6 +1,10 @@
 pipeline {
     agent any
-    
+
+    tools {
+        nodejs 'NodeJS 18'
+    }
+
     environment {
         DOCKER_IMAGE = 'devops-mini-project'
         DOCKER_TAG = "${BUILD_NUMBER}"
@@ -9,7 +13,7 @@ pipeline {
         RENDER_SERVICE_ID = credentials('render-service-id')
         RENDER_APP_URL = credentials('render-app-url')
     }
-    
+
     stages {
         stage('Checkout') {
             steps {
@@ -17,15 +21,22 @@ pipeline {
                 echo 'Code checked out successfully'
             }
         }
-        
+
+        stage('Check NodeJS') {
+            steps {
+                sh 'node -v'
+                sh 'npm -v'
+            }
+        }
+
         stage('Install Dependencies') {
             steps {
                 dir('app') {
-                    sh 'npm install'
+                    sh 'npm ci'
                 }
             }
         }
-        
+
         stage('Run Tests') {
             steps {
                 dir('app') {
@@ -38,7 +49,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Build Docker Image') {
             steps {
                 script {
@@ -49,7 +60,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Push to DockerHub') {
             steps {
                 script {
@@ -68,7 +79,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Deploy to Render') {
             steps {
                 script {
@@ -83,7 +94,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Health Check') {
             steps {
                 script {
@@ -99,14 +110,13 @@ pipeline {
                         else
                             echo "App returned status \$STATUS — Render free tier may still be warming up."
                             echo "Check manually: \${APP_URL}/health"
-                            echo "This is normal for free tier — deployment still succeeded!"
                         fi
                     """
                 }
             }
         }
     }
-    
+
     post {
         success {
             echo 'Pipeline completed successfully!'
