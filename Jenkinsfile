@@ -57,7 +57,7 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 sh """
-                    sed 's|IMAGE_TAG|\$DOCKERHUB_CREDENTIALS_USR/${DOCKER_IMAGE}:${DOCKER_TAG}|g' k8s/deployment.yaml | kubectl apply -f -
+                    sed "s|IMAGE_TAG|$DOCKERHUB_CREDENTIALS_USR/${DOCKER_IMAGE}:${DOCKER_TAG}|g" k8s/deployment.yaml | kubectl apply -f -
                     kubectl apply -f k8s/service.yaml
                     kubectl rollout status deployment/devops-mini-project --timeout=120s
                     kubectl get pods -l app=devops-mini-project
