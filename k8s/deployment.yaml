@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: devops-mini-project
-          image: phoenixfromashes/devops-mini-project_kubernetes:latest         # replaced by Jenkins sed command
+          image: IMAGE_TAG          # replaced by Jenkins sed command
           ports:
             - containerPort: 4500
           env:
