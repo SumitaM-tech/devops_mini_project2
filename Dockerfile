@@ -6,7 +6,6 @@ RUN npm ci --only=production
 
 # ── Stage 2: Lean production image ──
 FROM node:18-alpine AS production
-LABEL org.opencontainers.image.source="https://github.com/SumitaM-tech/devops_mini_project"
 LABEL org.opencontainers.image.description="DevOps Mini Project"
 
 WORKDIR /app
@@ -20,9 +19,11 @@ COPY --chown=appuser:nodejs app/server.js ./
 COPY --chown=appuser:nodejs app/src ./src
 
 USER appuser
-EXPOSE 3000
+EXPOSE 4500
+
+ENV PORT=4500
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget -qO- http://localhost:3000/health || exit 1
+  CMD wget -qO- http://localhost:4500/health || exit 1
 
 CMD ["node", "server.js"]

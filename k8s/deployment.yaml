@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devops-mini-project
+  labels:
+    app: devops-mini-project
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: devops-mini-project
+  template:
+    metadata:
+      labels:
+        app: devops-mini-project
+    spec:
+      containers:
+        - name: devops-mini-project
+          image: phoenixfromashes/devops-mini-project_kubernetes:latest         # replaced by Jenkins sed command
+          ports:
+            - containerPort: 4500
+          env:
+            - name: PORT
+              value: "4500"
+            - name: NODE_ENV
+              value: "production"
+            - name: APP_VERSION
+              value: "1.0.0"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4500
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4500
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "250m"

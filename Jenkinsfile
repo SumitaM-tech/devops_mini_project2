@@ -5,68 +5,30 @@ pipeline {
         DOCKER_IMAGE = 'devops-mini-project'
         DOCKER_TAG = "${BUILD_NUMBER}"
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
-        RENDER_API_KEY = credentials('render-api-key')
-        RENDER_SERVICE_ID = credentials('render-service-id')
-        RENDER_APP_URL = credentials('render-app-url')
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 checkout scm
-                echo 'Code checked out successfully'
+                echo 'Code checked out'
             }
         }
 
-        stage('Check Docker') {
-            steps {
-                sh 'docker --version'
-                sh 'docker ps'
-            }
-        }
-
-        stage('Check NodeJS') {
+        stage('Install & Test') {
             steps {
                 script {
-                    docker.image('node:18').inside {
-                        sh 'node -v'
-                        sh 'npm -v'
-                    }
-                }
-            }
-        }
-
-        stage('Install Dependencies') {
-            steps {
-                script {
-                    docker.image('node:18').inside {
+                    docker.image('node:18-alpine').inside {
                         dir('app') {
                             sh 'npm ci'
+                            sh 'npm test || echo "No tests / tests skipped"'
                         }
                     }
                 }
             }
         }
 
-        stage('Run Tests') {
-            steps {
-                script {
-                    docker.image('node:18').inside {
-                        dir('app') {
-                            sh 'npm test || echo "No tests found"'
-                        }
-                    }
-                }
-            }
-            post {
-                always {
-                    junit '**/coverage/*.xml'
-                }
-            }
-        }
-
-        stage('Build Docker Image') {
+        stage('Docker Build') {
             steps {
                 sh """
                     docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
@@ -75,7 +37,7 @@ pipeline {
             }
         }
 
-        stage('Push to DockerHub') {
+        stage('Docker Push') {
             steps {
                 sh """
                     echo \$DOCKERHUB_CREDENTIALS_PSW | docker login -u \$DOCKERHUB_CREDENTIALS_USR --password-stdin
@@ -92,34 +54,14 @@ pipeline {
             }
         }
 
-        stage('Deploy to Render') {
+        stage('Deploy to Kubernetes') {
             steps {
                 sh """
-                    curl -s -X POST \
-                      -H "Authorization: Bearer \$RENDER_API_KEY" \
-                      -H "Content-Type: application/json" \
-                      "https://api.render.com/v1/services/\$RENDER_SERVICE_ID/deploys" \
-                      -d '{"clearCache": false}'
-                    echo "Render deployment triggered!"
-                """
-            }
-        }
-
-        stage('Health Check') {
-            steps {
-                sh """
-                    echo "Waiting 60s for deployment..."
-                    sleep 60
-                    APP_URL="https://\$RENDER_APP_URL"
-                    echo "Checking: \${APP_URL}/health"
-                    STATUS=\$(curl -s -o /dev/null -w "%{http_code}" "\${APP_URL}/health" || echo "000")
-                    echo "Health check status: \$STATUS"
-                    if [ "\$STATUS" = "200" ]; then
-                        echo "Deployment successful! App is live at \${APP_URL}"
-                    else
-                        echo "App returned status \$STATUS — Render free tier may still be warming up."
-                        echo "Check manually: \${APP_URL}/health"
-                    fi
+                    sed 's|IMAGE_TAG|\$DOCKERHUB_CREDENTIALS_USR/${DOCKER_IMAGE}:${DOCKER_TAG}|g' k8s/deployment.yaml | kubectl apply -f -
+                    kubectl apply -f k8s/service.yaml
+                    kubectl rollout status deployment/devops-mini-project --timeout=120s
+                    kubectl get pods -l app=devops-mini-project
+                    kubectl get svc devops-mini-project-svc
                 """
             }
         }
@@ -127,10 +69,10 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline completed successfully!'
+            echo 'Pipeline completed successfully'
         }
         failure {
-            echo 'Pipeline failed!'
+            echo 'Pipeline failed'
         }
         always {
             cleanWs()

@@ -3,7 +3,7 @@ const path = require('path');
 const os = require('os');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4500;
 const ENV = process.env.NODE_ENV || 'development';
 const VERSION = process.env.APP_VERSION || '1.0.0';
 
